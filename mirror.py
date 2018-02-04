@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2018 Taylor Shuler
+# Copyright 2008-2014 Brett Slatkin, 2018 Taylor Shuler
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__author__ = "Taylor Shuler (gnosoman@gmail.com)"
+__author__ = "Brett Slatkin (bslatkin@gmail.com), Taylor Shuler (gnosoman@gmail.com)"
 
 import datetime
 import hashlib
@@ -23,10 +23,10 @@ import re
 import time
 import urllib
 import wsgiref.handlers
+import webapp2
 
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
-import webapp2
 from google.appengine.ext.webapp import template
 from google.appengine.runtime import apiproxy_errors
 
@@ -75,8 +75,7 @@ def get_url_key_name(url):
 ###############################################################################
 
 class MirroredContent(object):
-  def __init__(self, original_address, translated_address,
-               status, headers, data, base_url):
+  def __init__(self, original_address, translated_address, status, headers, data, base_url):
     self.original_address = original_address
     self.translated_address = translated_address
     self.status = status
@@ -121,8 +120,7 @@ class MirroredContent(object):
     for content_type in TRANSFORMED_CONTENT_TYPES:
       # startswith() because there could be a 'charset=UTF-8' in the header.
       if page_content_type.startswith(content_type):
-        content = transform_content.TransformContent(base_url, mirrored_url,
-                                                     content)
+        content = transform_content.TransformContent(base_url, mirrored_url, content)
         break
 
     new_content = MirroredContent(
@@ -149,7 +147,6 @@ class WarmupHandler(webapp2.RequestHandler):
   def get(self):
     pass
 
-
 class BaseHandler(webapp2.RequestHandler):
   def get_relative_url(self):
     slash = self.request.url.find("/", len(self.request.scheme + "://"))
@@ -163,7 +160,6 @@ class BaseHandler(webapp2.RequestHandler):
       self.error(404)
       return True
     return False
-
 
 class HomeHandler(BaseHandler):
   def get(self):
@@ -189,7 +185,6 @@ class HomeHandler(BaseHandler):
     }
     self.response.out.write(template.render("main.html", context))
 
-
 class MirrorHandler(BaseHandler):
   def get(self, base_url):
     if self.is_recursive_request():
@@ -198,9 +193,7 @@ class MirrorHandler(BaseHandler):
     assert base_url
 
     # Log the user-agent and referrer, to see who is linking to us.
-    logging.debug('User-Agent = "%s", Referrer = "%s"',
-                  self.request.user_agent,
-                  self.request.referer)
+    logging.debug('User-Agent = "%s", Referrer = "%s"', self.request.user_agent, self.request.referer)
     logging.debug('Base_url = "%s", url = "%s"', base_url, self.request.url)
 
     translated_address = self.get_relative_url()[1:]  # remove leading /
@@ -216,9 +209,7 @@ class MirrorHandler(BaseHandler):
     if content is None:
       logging.debug("Cache miss")
       cache_miss = True
-      content = MirroredContent.fetch_and_store(key_name, base_url,
-                                                translated_address,
-                                                mirrored_url)
+      content = MirroredContent.fetch_and_store(key_name, base_url, translated_address, mirrored_url)
     if content is None:
       return self.error(404)
 

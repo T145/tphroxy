@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2018 Taylor Shuler
+# Copyright 2008-2014 Brett Slatkin, 2018 Taylor Shuler
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__author__ = "Taylor Shuler (gnosoman@gmail.com)"
+__author__ = "Brett Slatkin (bslatkin@gmail.com), Taylor Shuler (gnosoman@gmail.com)"
 
 import os
 import re
@@ -45,7 +45,6 @@ CSS_IMPORT_START = r"(?i)@import(?P<spacing>[\t ]+)(?P<quote>[\"']?)"
 
 # CSS url() call
 CSS_URL_START = r"(?i)\burl\((?P<quote>[\"']?)"
-
 
 REPLACEMENT_REGEXES = [
   (TAG_START + SAME_DIR_URL_REGEX,
