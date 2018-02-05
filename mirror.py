@@ -216,8 +216,7 @@ class MirrorHandler(BaseHandler):
     for key, value in content.headers.iteritems():
       self.response.headers[key] = value
     if not DEBUG:
-      self.response.headers["cache-control"] = \
-        "max-age=%d" % EXPIRATION_DELTA_SECONDS
+      self.response.headers["cache-control"] = "max-age=%d" % EXPIRATION_DELTA_SECONDS
 
     self.response.out.write(content.data)
 
