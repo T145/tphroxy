@@ -52,15 +52,17 @@ IGNORE_HEADERS = frozenset([  # Ignore hop-by-hop headers
     'trailers',
     'transfer-encoding',
     'upgrade'
-    ])
+])
 
 TRANSFORMED_CONTENT_TYPES = frozenset(['text/html', 'text/css'])
 MAX_CONTENT_SIZE = 10 ** 6 - 600
+
 
 def get_url_key_name(url):
     url_hash = hashlib.sha256()
     url_hash.update(url)
     return 'hash_' + url_hash.hexdigest()
+
 
 class MirroredContent(object):
 
@@ -76,19 +78,6 @@ class MirroredContent(object):
     def get_by_key_name(key_name):
         return memcache.get(key_name)
 
-	"""Fetch and cache a page.
-
-	Args:
-	  key_name: Hash to use to store the cached page.
-	  base_url: The hostname of the page that's being mirrored.
-	  translated_address: The URL of the mirrored page on this site.
-	  mirrored_url: The URL of the original page. Hostname should match
-		the base_url.
-
-	Returns:
-	  A new MirroredContent object, if the page was successfully retrieved.
-	  None if any errors occurred or the content could not be retrieved.
-	"""
     @staticmethod
     def fetch_and_store(key_name, base_url, translated_address, mirrored_url):
 
@@ -109,7 +98,8 @@ class MirroredContent(object):
         page_content_type = adjusted_headers.get('content-type', '')
 
         for content_type in TRANSFORMED_CONTENT_TYPES:
-			# startswith() because there could be a 'charset=UTF-8' in the header.
+            # startswith() because there could be a 'charset=UTF-8' in the header.
+
             if page_content_type.startswith(content_type):
                 content = transform_content(base_url, mirrored_url, content)
                 break
@@ -122,7 +112,7 @@ class MirroredContent(object):
             headers=adjusted_headers,
             data=content)
 
-		# Do not memcache content over 1MB
+        # Do not memcache content over 1MB
         if len(content) < MAX_CONTENT_SIZE:
             if not memcache.add(key_name, new_content, time=EXPIRATION_DELTA_SECONDS):
                 logging.error('memcache.add failed: key_name = "%s", original_url = "%s"', key_name, mirrored_url)
@@ -131,11 +121,11 @@ class MirroredContent(object):
 
         return new_content
 
+
 class BaseHandler(webapp2.RequestHandler):
 
     def get_relative_url(self):
-        slash = self.request.url.find(r"/", len(self.request.scheme
-                + '://'))
+        slash = self.request.url.find(r"/", len(self.request.scheme + '://'))
         if slash == -1:
             return r"/"
         return self.request.url[slash:]
@@ -147,16 +137,16 @@ class BaseHandler(webapp2.RequestHandler):
             return True
         return False
 
+
 class HomeHandler(BaseHandler):
 
     def get(self):
         if self.is_recursive_request():
             return
-		
-		# Handle the input form to redirect the user to a relative url
 
+        # Handle the input form to redirect the user to a relative url
         form_url = self.request.get('url')
-        if form_url: # Accept URLs that still have a leading 'http(s)://'
+        if form_url:  # Accept URLs that still have a leading 'http(s)://'
 
             inputted_url = urllib.unquote(form_url)
             if inputted_url.startswith('http'):
@@ -165,12 +155,13 @@ class HomeHandler(BaseHandler):
                 inputted_url = 'http_' + inputted_url
             return self.redirect(r"/" + inputted_url)
 
-		# Do this dictionary construction here, to decouple presentation from how we store data.
+        # Do this dictionary construction here, to decouple presentation from how we store data.
         secure_url = None
         if self.request.scheme == 'http':
             secure_url = 'https://%s%s' % (self.request.host, self.request.path_qs)
         context = {'secure_url': secure_url}
         self.response.out.write(template.render('main.html', context))
+
 
 class MirrorHandler(BaseHandler):
 
@@ -179,8 +170,9 @@ class MirrorHandler(BaseHandler):
             return
 
         assert base_url
-		
-		# Log the user-agent and referrer, to see who is linking to us.
+
+        # Log the user-agent and referrer, to see who is linking to us.
+
         logging.debug('User-Agent = "%s", Referrer = "%s"', self.request.user_agent, self.request.referer)
         logging.debug('Base_url = "%s", url = "%s"', base_url, self.request.url)
 
@@ -190,9 +182,9 @@ class MirrorHandler(BaseHandler):
             mirrored_url = '%s://%s' % (scheme, url)
         else:
             mirrored_url = 'http://%s' % translated_address
-		
-		# Use sha256 hash instead of mirrored url for the key name, since key
-		# names can only be 500 bytes in length; URLs may be up to 2KB.
+
+        # Use sha256 hash instead of mirrored url for the key name, since key
+        # names can only be 500 bytes in length; URLs may be up to 2KB.
 
         key_name = get_url_key_name(mirrored_url)
         logging.info("Handling request for '%s' = '%s'", mirrored_url, key_name)
@@ -209,9 +201,9 @@ class MirrorHandler(BaseHandler):
         for (key, value) in content.headers.iteritems():
             self.response.headers[key] = value
         if not DEBUG:
-            self.response.headers['cache-control'] = 'max-age=%d' \
-                % EXPIRATION_DELTA_SECONDS
+            self.response.headers['cache-control'] = 'max-age=%d' % EXPIRATION_DELTA_SECONDS
 
         self.response.out.write(content.data)
+
 
 app = webapp2.WSGIApplication([(r"/", HomeHandler), (r"/([^/]+).*", MirrorHandler)], debug=DEBUG)

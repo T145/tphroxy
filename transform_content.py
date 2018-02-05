@@ -58,15 +58,14 @@ CSS_IMPORT_START = r"(?i)@import(?P<spacing>[\t ]+)(?P<quote>[\"']?)"
 
 CSS_URL_START = r"(?i)\burl\((?P<quote>[\"']?)"
 
+
 def replscheme(m):
     if m.group('scheme') is not None:
-        s = '%s%s%s/%s_%s' % (m.group('tag'), m.group('equals'),
-                              m.group('quote'), m.group('scheme'),
-                              m.group('url'))
+        s = '%s%s%s/%s_%s' % (m.group('tag'), m.group('equals'), m.group('quote'), m.group('scheme'), m.group('url'))
     else:
-        s = '%s%s%s/%s' % (m.group('tag'), m.group('equals'),
-                           m.group('quote'), m.group('url'))
+        s = '%s%s%s/%s' % (m.group('tag'), m.group('equals'), m.group('quote'), m.group('url'))
     return s
+
 
 REPLACEMENT_OTHER_REGEXES = [  # Need this because HTML tags could end with '/>', which confuses the
                                # tag-matching regex above, since that's the end-of-match signal.
@@ -100,14 +99,14 @@ REPLACEMENT_SAME_DIR_URL_REGEXES = [(TAG_START + SAME_DIR_URL_REGEX,
                                     + SAME_DIR_URL_REGEX,
                                     "url(\g<quote>%(accessed_dir)s\g<url>")]
 
+
 def transform_content(base_url, accessed_url, content):
     url_obj = urlparse.urlparse(accessed_url)
     accessed_dir = os.path.dirname(url_obj.path)
     if not accessed_dir.endswith('/'):
         accessed_dir += '/'
 
-	# only transform relative url if there is no base tag
-
+    # only transform relative url if there is no base tag
     regexes = list(REPLACEMENT_OTHER_REGEXES)  # we must make a copy otherwise, it will modify the original list
     if re.search(r'(?i)<base +[^>]*href', content) is None:
         regexes = REPLACEMENT_SAME_DIR_URL_REGEXES + regexes  # insert at the beginning
