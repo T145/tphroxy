@@ -53,9 +53,35 @@
             margin-bottom: 15px;
             padding: 7px 9px;
         }
+
+        label {
+            display: block;
+            padding-left: 15px;
+            text-indent: -3px;
+        }
+
+        input {
+            width: 13px;
+            height: 13px;
+            padding: 0;
+            margin: 0;
+            vertical-align: bottom;
+            position: relative;
+            top: -1px;
+            *overflow: hidden;
+        }
+
+        .noselect {
+			-webkit-touch-callout: none; /* iOS Safari */
+			  -webkit-user-select: none; /* Safari */
+			   -khtml-user-select: none; /* Konqueror HTML */
+			     -moz-user-select: none; /* Firefox */
+				  -ms-user-select: none; /* Internet Explorer / Microsoft Edge */
+					  user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
+		}
     </style>
     <link href="static/css/bootplus-responsive.min.css" rel="stylesheet">
-    <link href="static/css/font-awesome-ie7.min.css" rel="stylesheet">
+    <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -83,16 +109,19 @@
                 <input type="text" class="input-block-level" name="url" placeholder="Enter URL here!" id="url_entry" autofocus>
             </div>
             <label class="checkbox">
-			<input type="checkbox" value="remember-me"> Remember url
-        </label>
-            <button class="btn btn-primary" type="submit">Search<i class="icon-circle-arrow-right"></i></button>
+				<input type="checkbox" value="remember-me">
+				<p class="noselect"> Remember url</p>
+			</label>
+            <button class="btn btn-primary" type="submit">
+				Search <i class="fas fa-angle-double-right"></i>
+			</button>
         </form>
     </div>
     <!-- /container -->
 
     <!-- Le javascript
     ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
+    <!-- Placed at the end of the document so the page loads faster -->
     <script src="static/js/bootstrap.min.js"></script>
 
 </body>
