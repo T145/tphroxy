@@ -35,7 +35,6 @@ from transform_content import transform_content
 
 DEBUG = True
 EXPIRATION_DELTA_SECONDS = 3600
-# EXPIRATION_DELTA_SECONDS = 10
 
 IGNORE_HEADERS = frozenset([  # Ignore hop-by-hop headers
     'set-cookie',
@@ -52,7 +51,6 @@ IGNORE_HEADERS = frozenset([  # Ignore hop-by-hop headers
 ])
 
 TRANSFORMED_CONTENT_TYPES = frozenset(['text/html', 'text/css'])
-MAX_CONTENT_SIZE = 10 ** 6 - 600
 
 
 class MirroredContent(object):
@@ -86,7 +84,6 @@ class MirroredContent(object):
 
         for content_type in TRANSFORMED_CONTENT_TYPES:
             # startswith() because there could be a 'charset=UTF-8' in the header.
-
             if page_content_type.startswith(content_type):
                 content = transform_content(base_url, mirrored_url, content)
                 break
@@ -108,6 +105,10 @@ class BaseHandler(webapp2.RequestHandler):
         slash = self.request.url.find(r"/", len(self.request.scheme + '://'))
         if slash == -1:
             return r"/"
+        logging.debug('@BaseHandler | slash: %s', slash)
+        logging.debug('@BaseHandler | request.scheme: %s', self.request.scheme)
+        logging.debug('@BaseHandler | request.url: %s', self.request.url)
+        logging.debug('@BaseHandler | get_relative_url: %s', self.request.url[slash:])
         return self.request.url[slash:]
 
     def is_recursive_request(self):
@@ -127,7 +128,6 @@ class HomeHandler(BaseHandler):
         # Handle the input form to redirect the user to a relative url
         form_url = self.request.get('url')
         if form_url:  # Accept URLs that still have a leading 'http(s)://'
-
             inputted_url = urllib.unquote(form_url)
             if inputted_url.startswith('http'):
                 inputted_url = inputted_url.replace('://', '_', 1)
@@ -152,9 +152,8 @@ class MirrorHandler(BaseHandler):
         assert base_url
 
         # Log the user-agent and referrer, to see who is linking to us.
-
-        logging.debug('User-Agent = "%s", Referrer = "%s"', self.request.user_agent, self.request.referer)
-        logging.debug('Base_url = "%s", url = "%s"', base_url, self.request.url)
+        logging.debug('@MirrorHandler | user_agent: "%s"; referer: "%s"', self.request.user_agent, self.request.referer)
+        logging.debug('@MirrorHandler | base_url: "%s"; request.url: "%s"', base_url, self.request.url)
 
         translated_address = self.get_relative_url()[1:]  # remove leading /
         if translated_address.startswith('http'):
