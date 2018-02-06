@@ -27,17 +27,14 @@ import urllib
 import wsgiref.handlers
 import webapp2
 
-from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.ext.webapp import template
 from google.appengine.runtime import apiproxy_errors
 
 from transform_content import transform_content
 
-DEBUG = False
+DEBUG = True
 EXPIRATION_DELTA_SECONDS = 3600
-
-# DEBUG = True
 # EXPIRATION_DELTA_SECONDS = 10
 
 IGNORE_HEADERS = frozenset([  # Ignore hop-by-hop headers
@@ -58,12 +55,6 @@ TRANSFORMED_CONTENT_TYPES = frozenset(['text/html', 'text/css'])
 MAX_CONTENT_SIZE = 10 ** 6 - 600
 
 
-def get_url_key_name(url):
-    url_hash = hashlib.sha256()
-    url_hash.update(url)
-    return 'hash_' + url_hash.hexdigest()
-
-
 class MirroredContent(object):
 
     def __init__(self, original_address, translated_address, status, headers, data, base_url):
@@ -75,17 +66,13 @@ class MirroredContent(object):
         self.base_url = base_url
 
     @staticmethod
-    def get_by_key_name(key_name):
-        return memcache.get(key_name)
-
-    @staticmethod
-    def fetch_and_store(key_name, base_url, translated_address, mirrored_url):
+    def fetch(base_url, translated_address, mirrored_url):
 
         logging.debug("Fetching '%s'", mirrored_url)
         try:
             response = urlfetch.fetch(mirrored_url)
-        except (urlfetch.Error, apiproxy_errors.Error):
-            logging.exception('Could not fetch URL')
+        except Exception as err:
+            logging.exception("Could not fetch URL: %s (%s)" % (mirrored_url, err))
             return None
 
         adjusted_headers = {}
@@ -111,13 +98,6 @@ class MirroredContent(object):
             status=response.status_code,
             headers=adjusted_headers,
             data=content)
-
-        # Do not memcache content over 1MB
-        if len(content) < MAX_CONTENT_SIZE:
-            if not memcache.add(key_name, new_content, time=EXPIRATION_DELTA_SECONDS):
-                logging.error('memcache.add failed: key_name = "%s", original_url = "%s"', key_name, mirrored_url)
-        else:
-            logging.warning('Content is over 1MB; not memcached')
 
         return new_content
 
@@ -183,20 +163,7 @@ class MirrorHandler(BaseHandler):
         else:
             mirrored_url = 'http://%s' % translated_address
 
-        # Use sha256 hash instead of mirrored url for the key name, since key
-        # names can only be 500 bytes in length; URLs may be up to 2KB.
-
-        key_name = get_url_key_name(mirrored_url)
-        logging.info("Handling request for '%s' = '%s'", mirrored_url, key_name)
-
-        content = MirroredContent.get_by_key_name(key_name)
-        cache_miss = False
-        if content is None:
-            logging.debug('Cache miss')
-            cache_miss = True
-            content = MirroredContent.fetch_and_store(key_name, base_url, translated_address, mirrored_url)
-        if content is None:
-            return self.error(404)
+        content = MirroredContent.fetch(base_url, translated_address, mirrored_url)
 
         for (key, value) in content.headers.iteritems():
             self.response.headers[key] = value
