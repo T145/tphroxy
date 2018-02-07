@@ -18,18 +18,12 @@
 __author__ = 'Brett Slatkin (bslatkin@gmail.com)'
 __modify__ = 'Taylor Shuler (gnosoman@gmail.com)'
 
-import datetime
-import hashlib
 import logging
-import re
-import time
 import urllib
-import wsgiref.handlers
 import webapp2
 
 from google.appengine.api import urlfetch
 from google.appengine.ext.webapp import template
-from google.appengine.runtime import apiproxy_errors
 
 from transform_content import transform_content
 
@@ -89,12 +83,12 @@ class MirroredContent(object):
                 break
 
         new_content = MirroredContent(
-            base_url=base_url,
-            original_address=mirrored_url,
-            translated_address=translated_address,
-            status=response.status_code,
-            headers=adjusted_headers,
-            data=content)
+            base_url = base_url,
+            original_address = mirrored_url,
+            translated_address = translated_address,
+            status = response.status_code,
+            headers = adjusted_headers,
+            data = content)
 
         return new_content
 
