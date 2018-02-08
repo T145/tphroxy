@@ -9,6 +9,63 @@ automatic_scaling:
   max_idle_instances: 1
   max_concurrent_requests: 40
 
+# Make Google's bundled libraries
+# available to our app, except for
+# the following that require to be
+# installed locally:
+# 
+#    lxml
+#    matplotlib
+#    mysqldb
+#    numpy
+#    PIL
+#    crcmod
+#    pycrypto
+#
+# the following webframeworks:
+#
+#    django
+#    flask
+#    grpcio
+#
+# and the following alpha-only releases:
+#
+#    protobuf
+#
+libraries:
+- name: enum
+  version: "0.9.23"
+- name: endpoints
+  version: "1.0"
+- name: futures
+  version: "3.0.5"
+- name: jinja2
+  version: "2.6"
+- name: markupsafe
+  version: "0.23"
+- name: setuptools
+  version: "0.6c11"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: ujson
+  version: "1.35"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+# werkzeug and yaml available at default versions
+
+skip_files:
+- .git/
+- .gitattributes
+- .gitignore
+- LICENSE
+- README.md
+- requirements.txt
+- transform_content_test.py
+
 handlers:
 - url: /robots\.txt
   static_files: static/robots.txt
