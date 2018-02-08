@@ -55,7 +55,9 @@ libraries:
   version: "2.5.2"
 - name: webob
   version: "1.2.3"
-# werkzeug and yaml available at default versions
+
+# werkzeug and yaml available
+# at default versions
 
 skip_files:
 - .git/
@@ -63,8 +65,6 @@ skip_files:
 - .gitignore
 - LICENSE
 - README.md
-- requirements.txt
-- transform_content_test.py
 
 handlers:
 - url: /robots\.txt

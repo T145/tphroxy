@@ -71,19 +71,34 @@ class MainPage(BasePage):
 
 class MirrorPage(BasePage):
 
-    def get(self, base_url):
+    def get(self, relative_url):
         if self.is_recursive_request():
             return
 
-        assert base_url
+        assert relative_url
 
-        logging.debug('@MirrorPage | base_url: %s', base_url)
+        logging.debug('@MirrorPage | relative_url: %s', relative_url)
         logging.debug('@MirrorPage | user_agent: %s; referer: %s', self.request.user_agent, self.request.referer)
 
         identity = app_identity.get_default_version_hostname();
-        mirror_url = identity + '/' + base_url
 
+        #mirror_url = identity + '/' + relative_url
+        #logging.debug('@MirrorPage | mirror_url: %s', mirror_url)
+
+        if self.get_secure_url() is None:
+            prefix = 'http://'
+        else:
+            prefix = 'https://'
+
+        mirror_url = prefix + identity + '/' + relative_url
         logging.debug('@MirrorPage | mirror_url: %s', mirror_url)
 
+        try:
+            webpage = urlfetch.fetch(prefix + relative_url)
+        except Exception as err:
+            logging.exception('@MirrorPage | ERROR - Could not fetch URL: %s (%s)' % (mirror_url, err))
+            raise err
+
+        self.response.out.write(webpage.content)
 
 app = webapp2.WSGIApplication([(r'/', MainPage), (r"/([^/]+).*", MirrorPage)], debug = True)
