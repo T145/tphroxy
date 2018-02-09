@@ -31,7 +31,8 @@ from urlparse import urlparse
 import webapp2
 
 env = Environment(
-    loader = FileSystemLoader(os.path.dirname(__file__))
+    loader = FileSystemLoader(os.path.dirname(__file__)),
+    trim_blocks = True
 )
 
 class BasePage(webapp2.RequestHandler):
@@ -67,7 +68,7 @@ class MainPage(BasePage):
             input_url = self.strip_scheme(unquote(input_url))
             return self.redirect(r'/' + input_url)
 
-        self.response.out.write(env.get_template("main.html").render({'secure_url': self.get_secure_url()}))
+        self.response.write(env.get_template('main.html').render({'secure_url': self.get_secure_url()}))
 
 class MirrorPage(BasePage):
 
@@ -90,7 +91,9 @@ class MirrorPage(BasePage):
         else:
             prefix = 'https://'
 
-        mirror_url = prefix + identity + '/' + relative_url
+        app_url = identity + '/'
+        base_url = app_url + relative_url
+        mirror_url = prefix + base_url
         logging.debug('@MirrorPage | mirror_url: %s', mirror_url)
 
         try:
@@ -99,6 +102,10 @@ class MirrorPage(BasePage):
             logging.exception('@MirrorPage | ERROR - Could not fetch URL: %s (%s)' % (mirror_url, err))
             raise err
 
-        self.response.out.write(webpage.content)
+        # first, replace all occurrences of the relative url with our base url
+        content = webpage.content
+        content = content.replace(prefix, prefix + app_url)
+
+        self.response.write(Environment().from_string(unicode(content, errors = 'ignore')).render())
 
 app = webapp2.WSGIApplication([(r'/', MainPage), (r"/([^/]+).*", MirrorPage)], debug = True)
