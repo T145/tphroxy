@@ -20,12 +20,13 @@ __author__ = 'Taylor Shuler (gnosoman@gmail.com)'
 import logging
 import os
 
-from google.appengine.api import app_identity, urlfetch
+from google.appengine.api import app_identity, urlfetch, memcache
+from google.appengine.ext import db
 
 from jinja2 import Environment, FileSystemLoader
-
 from urllib import unquote
 from urlparse import urlparse
+from bs4 import BeautifulSoup as Soup
 
 # Google imports webapp2 last, so I guess we will too
 import webapp2
@@ -42,7 +43,7 @@ class BasePage(webapp2.RequestHandler):
         is_self = 'AppEngine-Google' in user_agent
 
         if is_self:
-            logging.warning('@MainPage | RECURSIVE REQUEST - user_agent: %s', user_agent)
+            logging.warning('@BasePage | RECURSIVE REQUEST - user_agent: %s', user_agent)
 
         return is_self
 
@@ -56,6 +57,12 @@ class BasePage(webapp2.RequestHandler):
             return self.request.url
         return None
 
+    def get_scheme(self):
+        if self.get_secure_url() is None:
+            return 'http://'
+        else:
+            return 'https://'
+
 class MainPage(BasePage):
 
     def get(self):
@@ -63,6 +70,7 @@ class MainPage(BasePage):
             return
 
         input_url = self.request.get('url')
+        memcache.set('url', input_url)
 
         if input_url:
             input_url = self.strip_scheme(unquote(input_url))
@@ -78,34 +86,39 @@ class MirrorPage(BasePage):
 
         assert relative_url
 
-        logging.debug('@MirrorPage | relative_url: %s', relative_url)
-        logging.debug('@MirrorPage | user_agent: %s; referer: %s', self.request.user_agent, self.request.referer)
+        scheme = self.get_scheme()
+        input_url = memcache.get('url')
 
-        identity = app_identity.get_default_version_hostname();
+        logging.debug("@MirrorPage | relative_url: %s", relative_url)
+        logging.debug("@MirrorPage | input_url: %s", input_url)
+        logging.debug('@MirrorPage | user_agent: %s', self.request.user_agent)
+        logging.debug('@MirrorPage | referer: %s', self.request.referer)
 
-        #mirror_url = identity + '/' + relative_url
-        #logging.debug('@MirrorPage | mirror_url: %s', mirror_url)
-
-        if self.get_secure_url() is None:
-            prefix = 'http://'
-        else:
-            prefix = 'https://'
-
-        app_url = identity + '/'
-        base_url = app_url + relative_url
-        mirror_url = prefix + base_url
-        logging.debug('@MirrorPage | mirror_url: %s', mirror_url)
+        # check for asset links
+        if relative_url not in input_url:
+            relative_url = input_url + relative_url
+            logging.debug('@MirrorPage | Found asset path: %s', relative_url)
 
         try:
-            webpage = urlfetch.fetch(prefix + relative_url)
+            webpage = urlfetch.fetch(input_url)
         except Exception as err:
-            logging.exception('@MirrorPage | ERROR - Could not fetch URL: %s (%s)' % (mirror_url, err))
+            logging.exception('@MirrorPage | ERROR - Could not fetch URL: %s (%s)' % (input_url, err))
             raise err
 
-        # first, replace all occurrences of the relative url with our base url
         content = webpage.content
-        content = content.replace(prefix, prefix + app_url)
+        soup = Soup(content, 'html.parser')
+        app_url = scheme + app_identity.get_default_version_hostname() + '/'
+
+        for link in soup.find_all(href = True):
+            if scheme in link['href']:
+                link['href'] = link['href'].replace(scheme, app_url)
+                logging.info('@MirrorPage | Updated link: %s', link['href'])
+            else:
+                link['href'] = input_url + link['href'].strip('/')
+                logging.info('@MirrorPage | Updated asset: %s', link['href'])
+
+        soup = Soup(soup.renderContents())
 
         self.response.write(Environment().from_string(unicode(content, errors = 'ignore')).render())
 
-app = webapp2.WSGIApplication([(r'/', MainPage), (r"/([^/]+).*", MirrorPage)], debug = True)
+app = webapp2.WSGIApplication([(r'/', MainPage), (r"/([^/]+).*", MirrorPage)], debug = False)
