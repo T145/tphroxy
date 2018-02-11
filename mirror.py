@@ -86,7 +86,6 @@ class MirrorPage(BasePage):
 
         assert relative_url
 
-        scheme = self.get_scheme()
         input_url = memcache.get('url')
 
         logging.debug("@MirrorPage | relative_url: %s", relative_url)
@@ -107,18 +106,27 @@ class MirrorPage(BasePage):
 
         content = webpage.content
         soup = Soup(content, 'html.parser')
-        app_url = scheme + app_identity.get_default_version_hostname() + '/'
+        app_url = self.get_scheme() + app_identity.get_default_version_hostname() + '/'
 
-        for link in soup.find_all(href = True):
-            if scheme in link['href']:
-                link['href'] = link['href'].replace(scheme, app_url)
-                logging.info('@MirrorPage | Updated link: %s', link['href'])
-            else:
-                link['href'] = input_url + link['href'].strip('/')
-                logging.info('@MirrorPage | Updated asset: %s', link['href'])
+        def fix_tag(tag, attr):
+            if tag.has_attr(attr):
+                if 'https://' in tag[attr]:
+                    tag[attr] = tag[attr].replace('https://', app_url)
+                    logging.info('@MirrorPage | Updated link: %s', tag[attr])
+                elif 'http://' in tag[attr]:
+                    tag[attr] = tag[attr].replace('http://', app_url)
+                    logging.info('@MirrorPage | Updated link: %s', tag[attr])
+                elif tag[attr].startswith('/'):
+                    tag[attr] = input_url + tag[attr].strip('/')
+                    logging.info('@MirrorPage | Updated asset: %s', tag[attr])
 
-        soup = Soup(soup.renderContents())
+        for tag in soup.find_all(True):
+            fix_tag(tag, 'href')
+            fix_tag(tag, 'content')
+            fix_tag(tag, 'src')
 
-        self.response.write(Environment().from_string(unicode(content, errors = 'ignore')).render())
+        #content = soup.prettify(soup.original_encoding)
+        #self.response.write(Environment().from_string(unicode(content, errors = 'ignore')).render())
+        self.response.write(soup.prettify())
 
 app = webapp2.WSGIApplication([(r'/', MainPage), (r"/([^/]+).*", MirrorPage)], debug = False)
