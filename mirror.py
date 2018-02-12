@@ -20,19 +20,21 @@ __author__ = 'Taylor Shuler (gnosoman@gmail.com)'
 import logging
 import os
 
-from google.appengine.api import app_identity, urlfetch, memcache
-from google.appengine.ext import db
-
-from jinja2 import Environment, FileSystemLoader
 from urllib import unquote
 from urlparse import urlparse
 from bs4 import BeautifulSoup as Soup
 
-# Google imports webapp2 last, so I guess we will too
+from google.appengine.api import app_identity, urlfetch, memcache
+from google.appengine.ext import db
+
+# Reflecting Google's import ordering
+import jinja2
 import webapp2
 
-env = Environment(
-    loader = FileSystemLoader(os.path.dirname(__file__)),
+JINJA_ENVIRONMENT = jinja2.Environment(
+    loader = jinja2.FileSystemLoader(os.path.dirname(__file__)),
+    extensions = ['jinja2.ext.autoescape'],
+    autoescape = True,
     trim_blocks = True
 )
 
@@ -76,7 +78,7 @@ class MainPage(BasePage):
             input_url = self.strip_scheme(unquote(input_url))
             return self.redirect(r'/' + input_url)
 
-        self.response.write(env.get_template('main.html').render({'secure_url': self.get_secure_url()}))
+        self.response.write(JINJA_ENVIRONMENT.get_template('main.html').render({'secure_url': self.get_secure_url()}))
 
 class MirrorPage(BasePage):
 
@@ -99,13 +101,12 @@ class MirrorPage(BasePage):
             logging.debug('@MirrorPage | Found asset path: %s', relative_url)
 
         try:
-            webpage = urlfetch.fetch(input_url)
+            html = urlfetch.fetch(input_url).content
         except Exception as err:
             logging.exception('@MirrorPage | ERROR - Could not fetch URL: %s (%s)' % (input_url, err))
             raise err
 
-        content = webpage.content
-        soup = Soup(content, 'html.parser')
+        soup = Soup(html, 'html.parser')
         app_url = self.get_scheme() + app_identity.get_default_version_hostname() + '/'
 
         def fix_tag(tag, attr):
@@ -118,15 +119,13 @@ class MirrorPage(BasePage):
                     logging.info('@MirrorPage | Updated link: %s', tag[attr])
                 elif tag[attr].startswith('/'):
                     tag[attr] = input_url + tag[attr].strip('/')
-                    logging.info('@MirrorPage | Updated asset: %s', tag[attr])
+                    logging.info('@MirrorPage | Initial asset update: %s', tag[attr])
 
         for tag in soup.find_all(True):
             fix_tag(tag, 'href')
             fix_tag(tag, 'content')
             fix_tag(tag, 'src')
 
-        #content = soup.prettify(soup.original_encoding)
-        #self.response.write(Environment().from_string(unicode(content, errors = 'ignore')).render())
         self.response.write(soup.prettify())
 
 app = webapp2.WSGIApplication([(r'/', MainPage), (r"/([^/]+).*", MirrorPage)], debug = False)
